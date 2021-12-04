@@ -9,6 +9,9 @@
 
 library(shiny)
 
+# open df from drive
+df_skaters <- read.csv('data/skater_contracts_stats.csv')
+
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
 
