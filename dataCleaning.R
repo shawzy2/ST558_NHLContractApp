@@ -86,6 +86,9 @@ df_skaters$ageAtSigningInDays <- df_skaters$signingDate - df_skaters$born
 # remove unnessary columns
 df_skaters <- df_skaters %>% select(-c(signingDate, born, nationality, draftYear, season))
 
+# save df to drive
+write.csv(df_skaters,'data/skater_contracts_stats_eda.csv', row.names = FALSE)
+
 # create dummyvars
 dcols <- c('type', 'expiraryStatus', 'position', 'handness', 'draftRound')
 df_skaters <- dummy_cols(df_skaters, select_columns = dcols, remove_selected_columns = TRUE)
