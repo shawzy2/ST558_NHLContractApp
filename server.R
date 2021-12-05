@@ -10,6 +10,7 @@
 library(shiny)
 library(DT)
 library(tidyverse)
+library(corrplot)
 
 
 
@@ -52,6 +53,49 @@ shinyServer(function(input, output) {
     #     hist(x, breaks = bins, col = 'darkgray', border = 'white')
     # 
     # })
+    
+    output$plot <- renderPlot({
+      # create filters
+      filters <- createFilters()
+      
+      # apply filters
+      g <- df_data %>% filter(filters) %>% ggplot()
+      if(input$select_plotType == 'Scatter') {
+        g <- g + geom_point(mapping = aes_string(x = input$select_plotX, y = input$select_plotY, colour = input$select_plotColour))
+      }
+      if(input$select_plotType == 'Line') {
+        g <- df_data %>% filter(filters) %>%
+              select_if(is.numeric) %>% 
+              group_by(seasonId) %>%
+              summarize_all(sum) %>%
+              ggplot(mapping = aes_string(x = 'seasonId', y = 'totalValue')) + geom_line()
+      } 
+      if(input$select_plotType == 'Box') {
+        g <- g + geom_boxplot(mapping = aes_string(group = input$select_boxX, x = input$select_boxX, y = input$select_boxY)) +
+                  theme(axis.text.x = element_text(angle = 45))
+      }
+      if(input$select_plotType == 'Correlation') {
+        g <-corrplot.mixed(cor(select(filter(df_data, filters), input$select_corrVars)))
+      }
+      g
+    })
+    
+    output$summary <- renderDT({
+      # create filters
+      filters <- createFilters()
+      
+      # build summary table
+      ret <- data.frame()
+      if(input$select_summaryType == 'Contingency Table') {
+        ret <- as.data.frame.matrix(table(filter(df_data, filters)[,input$select_sum1], filter(df_data, filters)[,input$select_sum2]))
+      } else if(input$select_summaryType == '5 Number Summary') {
+        ret <- as.matrix(summary(filter(df_data, filters)[,input$select_sumVar]))
+      }
+      ret
+    },
+    options = list(
+      scrollX = TRUE
+    ))
     
     # data table on 'data' page
     output$table <- renderDT({

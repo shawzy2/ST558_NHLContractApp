@@ -10,8 +10,10 @@
 library(shiny)
 library(shinydashboard)
 library(DT)
+library(dplyr)
 
 df_data_eda <- read.csv('data/skater_contracts_stats_eda.csv')
+colourBy <- c('expiraryStatus', 'type', 'position', 'nationality', 'handness')
 
 dashboardPage(
   dashboardHeader(title = "NHL Contract Predictor"),
@@ -53,8 +55,90 @@ dashboardPage(
       ),
       
       # Data Exploration Tab
+      
       tabItem(tabName = "dataExploration",
-              h2("Data Exploration tab content")
+              h2("Data Exploration"),
+              h4('Filters'),
+              fluidRow(
+                box(
+                  title = 'Player Filters',
+                  selectInput('select_position', label = 'Position', choices = append(c('All'), unique(df_data_eda$position)), selected = 'All'),
+                  selectInput('select_handness', label = 'Handness', c('Left', 'Right', 'All'), selected = 'All'),
+                  selectInput('select_nation', label = 'Nation', choices = append(c('All'), unique(df_data_eda$nationality)), selected = 'All'),
+                  sliderInput("slider_height", "Player Height (inches)", min = min(df_data_eda$height), max = max(df_data_eda$height), value = c(min(df_data_eda$height), max = max(df_data_eda$height))),
+                  sliderInput("slider_weight", "Player Weight (lbs)", min = min(df_data_eda$weight), max = max(df_data_eda$weight), value = c(min(df_data_eda$weight), max = max(df_data_eda$weight))),
+                  sliderInput("slider_age", "Player Age at Signing (days)", min = min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays), value = c(min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays)))
+                ),
+                box(
+                  title = 'Contract Filters',
+                  selectInput('select_type', label = 'Contract Type', choices = append(c('All'), unique(df_data_eda$type)), selected = 'All'),
+                  sliderInput("slider_totalValue", "Total Value of Contract ($USD)", min = min(df_data_eda$totalValue), max = max(df_data_eda$totalValue), value = c(min(df_data_eda$totalValue), max = max(df_data_eda$totalValue))),
+                  sliderInput("slider_length", "Total Length of Contract (years)", min = min(df_data_eda$length), max = max(df_data_eda$length), value = c(min(df_data_eda$length), max = max(df_data_eda$length))),
+                  dateRangeInput("daterange_signingDate", "Signing Date", start = min(df_data_eda$signingDate), end = max(df_data_eda$signingDate))
+                )
+              ),
+              fluidRow(
+                div(style = "height:10px;"),
+                div(style = "height:15px; border-radius: 1px; background: #D8D8D8;"),
+                div(style = "height:10px;"),
+              ),
+              h4('Plots'),
+              fluidRow(
+                sidebarPanel(
+                  title = 'Plot Builder',
+                  selectInput('select_plotType', label = 'Plot Type', choices = c('Scatter', 'Line', 'Box', 'Correlation'), selected = 'Scatter'),
+                  conditionalPanel(
+                    condition = "input.select_plotType == 'Scatter'",
+                    tags$div(selectInput('select_plotX', label = 'X Variable', choices = colnames(select_if(df_data_eda, is.numeric)), selected = 'g', width = '100px'), style="display:inline-block"),
+                    tags$div(selectInput('select_plotY', label = 'Y Variable', choices = colnames(select_if(df_data_eda, is.numeric)), selected = 'totalValue', width = '100px'), style="display:inline-block"),
+                    tags$div(selectInput('select_plotColour', label = 'Colour By', choices = colourBy, selected = 'position', width = '100px'), style="display:inline-block")
+                  ),
+                  conditionalPanel(
+                    condition = "input.select_plotType == 'Line'",
+                    tags$div(selectInput('select_plotX', label = 'X Variable', choices = c('seasonId'), selected = 'seasonId', width = '100px'), style="display:inline-block"),
+                    tags$div(selectInput('select_plotY', label = 'Y Variable', choices = c('totalValue'), selected = 'totalValue', width = '100px'), style="display:inline-block")
+                  ),
+                  conditionalPanel(
+                    condition = "input.select_plotType == 'Box'",
+                    tags$div(selectInput('select_boxX', label = 'X Variable', choices = c('seasonId', 'type', 'position', 'handness', 'draftRound'), selected = 'position', width = '100px'), style="display:inline-block"),
+                    tags$div(selectInput('select_boxY', label = 'Y Variable', choices = c('totalValue', 'length', 'capHitPercentage'), selected = 'totalValue', width = '100px'), style="display:inline-block")
+                  ),
+                  conditionalPanel(
+                    condition = "input.select_plotType == 'Correlation'",
+                    selectInput('select_corrVars', label = 'Variables', choices = colnames(select_if(df_data_eda, is.numeric)), selected = c('totalValue', 'g', 'playoff_g'), multiple = TRUE)
+                  )
+                ),
+                mainPanel(
+                  plotOutput("plot")
+                )
+              ),
+              fluidRow(
+                div(style = "height:10px;"),
+                div(style = "height:15px; border-radius: 1px; background: #D8D8D8;"),
+                div(style = "height:10px;"),
+              ),
+              h4('Summaries'),
+              fluidRow(
+                sidebarPanel(
+                  title = 'Summary Builder',
+                  selectInput('select_summaryType', label = 'Summary Type', choices = c('Contingency Table', '5 Number Summary'), selected = 'Scatter'),
+                  conditionalPanel(
+                    condition = "input.select_summaryType == 'Contingency Table'",
+                    tags$div(selectInput('select_sum1', label = 'Variable 1', choices = colnames(select_if(df_data_eda, is.character)), selected = 'position', width = '100px'), style="display:inline-block"),
+                    tags$div(selectInput('select_sum2', label = 'Variable 2', choices = colnames(select_if(df_data_eda, is.character)), selected = 'handness', width = '100px'), style="display:inline-block")
+                  ),
+                  conditionalPanel(
+                    condition = "input.select_summaryType == '5 Number Summary'",
+                    tags$div(selectInput('select_sumVar', label = 'Variable 1', choices = colnames(select_if(df_data_eda, is.numeric)), selected = 'totalValue', width = '100px'), style="display:inline-block"),
+                  )
+                ),
+                mainPanel(
+                  DTOutput('summary')
+                )
+              )
+              
+              
+              
       ),
       
       # Modeling Tab
