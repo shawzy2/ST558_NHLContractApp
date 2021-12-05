@@ -11,7 +11,7 @@ library(shiny)
 library(shinydashboard)
 library(DT)
 
-df_data <- read.csv('data/skater_contracts_stats_eda.csv')
+df_data_eda <- read.csv('data/skater_contracts_stats_eda.csv')
 
 dashboardPage(
   dashboardHeader(title = "NHL Contract Predictor"),
@@ -68,19 +68,19 @@ dashboardPage(
               fluidRow(
                 box(
                   title = 'Player Filters',
-                  selectInput('select_position', label = 'Position', choices = append(c('All'), unique(df_data$position)), selected = 'All'),
+                  selectInput('select_position', label = 'Position', choices = append(c('All'), unique(df_data_eda$position)), selected = 'All'),
                   selectInput('select_handness', label = 'Handness', c('Left', 'Right', 'All'), selected = 'All'),
-                  selectInput('select_nation', label = 'Nation', choices = append(c('All'), unique(df_data$nationality)), selected = 'All'),
-                  sliderInput("slider_height", "Player Height (inches)", min = min(df_data$height), max = max(df_data$height), value = c(min(df_data$height), max = max(df_data$height))),
-                  sliderInput("slider_weight", "Player Weight (lbs)", min = min(df_data$weight), max = max(df_data$weight), value = c(min(df_data$weight), max = max(df_data$weight))),
-                  sliderInput("slider_age", "Player Age at Signing (days)", min = min(df_data$ageAtSigningInDays), max = max(df_data$ageAtSigningInDays), value = c(min(df_data$ageAtSigningInDays), max = max(df_data$ageAtSigningInDays)))
+                  selectInput('select_nation', label = 'Nation', choices = append(c('All'), unique(df_data_eda$nationality)), selected = 'All'),
+                  sliderInput("slider_height", "Player Height (inches)", min = min(df_data_eda$height), max = max(df_data_eda$height), value = c(min(df_data_eda$height), max = max(df_data_eda$height))),
+                  sliderInput("slider_weight", "Player Weight (lbs)", min = min(df_data_eda$weight), max = max(df_data_eda$weight), value = c(min(df_data_eda$weight), max = max(df_data_eda$weight))),
+                  sliderInput("slider_age", "Player Age at Signing (days)", min = min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays), value = c(min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays)))
                 ),
                 box(
                   title = 'Contract Filters',
-                  selectInput('select_type', label = 'Contract Type', choices = append(c('All'), unique(df_data$type)), selected = 'All'),
-                  sliderInput("slider_totalValue", "Total Value of Contract ($USD)", min = min(df_data$totalValue), max = max(df_data$totalValue), value = c(min(df_data$totalValue), max = max(df_data$totalValue))),
-                  sliderInput("slider_length", "Total Length of Contract (years)", min = min(df_data$length), max = max(df_data$length), value = c(min(df_data$length), max = max(df_data$length))),
-                  dateRangeInput("daterange_signingDate", "Signing Date", start = min(df_data$signingDate), end = max(df_data$signingDate))
+                  selectInput('select_type', label = 'Contract Type', choices = append(c('All'), unique(df_data_eda$type)), selected = 'All'),
+                  sliderInput("slider_totalValue", "Total Value of Contract ($USD)", min = min(df_data_eda$totalValue), max = max(df_data_eda$totalValue), value = c(min(df_data_eda$totalValue), max = max(df_data_eda$totalValue))),
+                  sliderInput("slider_length", "Total Length of Contract (years)", min = min(df_data_eda$length), max = max(df_data_eda$length), value = c(min(df_data_eda$length), max = max(df_data_eda$length))),
+                  dateRangeInput("daterange_signingDate", "Signing Date", start = min(df_data_eda$signingDate), end = max(df_data_eda$signingDate))
                 )
               ),
               fluidRow(
