@@ -9,6 +9,7 @@
 
 library(shiny)
 library(shinydashboard)
+library(DT)
 
 df_data <- read.csv('data/skater_contracts_stats_eda.csv')
 
