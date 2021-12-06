@@ -11,6 +11,8 @@ library(shiny)
 library(DT)
 library(tidyverse)
 library(corrplot)
+library(caret)
+
 
 
 
@@ -19,6 +21,7 @@ library(corrplot)
 shinyServer(function(input, output) {
     # open df from drive
     df_data <- read.csv('data/skater_contracts_stats_eda.csv')
+    df <- read.csv('data/skater_contracts_stats.csv')
     
     # create filters func
     createFilters <- function() {
@@ -42,18 +45,8 @@ shinyServer(function(input, output) {
       filters <- filters & df_data$ageAtSigningInDays >= input$slider_age[1] & df_data$ageAtSigningInDays <= input$slider_age[2]
       filters <- filters & df_data$signingDate >= input$daterange_signingDate[1] & df_data$signingDate <= input$daterange_signingDate[2]
     }
-
-    # output$distPlot <- renderPlot({
-    # 
-    #     # generate bins based on input$bins from ui.R
-    #     x    <- faithful[, 2]
-    #     bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    # 
-    #     # draw the histogram with the specified number of bins
-    #     hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    # 
-    # })
     
+    # plots on data exploration page
     output$plot <- renderPlot({
       # create filters
       filters <- createFilters()
@@ -80,6 +73,7 @@ shinyServer(function(input, output) {
       g
     })
     
+    # summaries on data exploration page
     output$summary <- renderDT({
       # create filters
       filters <- createFilters()
@@ -100,7 +94,25 @@ shinyServer(function(input, output) {
     # data table on 'data' page
     output$table <- renderDT({
         # create filters
-        filters <- createFilters()
+        filters <- c(df_data$height > 0)
+        if(input$select_typed != 'All') {
+          filters <- filters & df_data$type == input$select_typed
+        }
+        if(input$select_positiond != 'All') {
+          filters <- filters & df_data$position == input$select_positiond
+        }
+        if(input$select_nationd != 'All') {
+          filters <- filters & df_data$nationality == input$select_nationd
+        }
+        if(input$select_handnessd != 'All') {
+          filters <- filters & df_data$handness == input$select_handnessd
+        }
+        filters <- filters & df_data$totalValue >= input$slider_totalValued[1] & df_data$totalValue <= input$slider_totalValued[2]
+        filters <- filters & df_data$length >= input$slider_lengthd[1] & df_data$length <= input$slider_lengthd[2]
+        filters <- filters & df_data$height >= input$slider_heightd[1] & df_data$height <= input$slider_heightd[2]
+        filters <- filters & df_data$weight >= input$slider_weightd[1] & df_data$weight <= input$slider_weightd[2]
+        filters <- filters & df_data$ageAtSigningInDays >= input$slider_aged[1] & df_data$ageAtSigningInDays <= input$slider_aged[2]
+        filters <- filters & df_data$signingDate >= input$daterange_signingDated[1] & df_data$signingDate <= input$daterange_signingDated[2]
         
         # apply filters
         df_data %>% filter(filters)
@@ -125,6 +137,105 @@ shinyServer(function(input, output) {
       }
     )
     
+    # reactive variables
+    rmse_dt = reactiveVal(0)
+    rmse_knn = reactiveVal(0)
+    rmse_lm = reactiveVal(0)
+    model_best_text = reactiveVal('')
     
+    # train models when button is clicked
+    observeEvent(input$action_train, {
+      # test train split
+      set.seed(123)
+      train_rows <- sample(nrow(df), nrow(df)*input$slider_trainProp)
+      trainData <- df[train_rows,]
+      testData <- df[-train_rows,] 
+      
+      # get formula 
+      form <- as.formula(paste('totalValue ~', paste(input$select_modelVars, collapse='+')))
+      
+      # train lm
+      lm <- train(form,
+                  data = trainData,
+                  method = 'lm'
+      )
+
+      # train knn
+      kgrid <- expand.grid(k = seq(input$slider_knnRange[1], input$slider_knnRange[2], by = 2))
+      knn_fit <- train(form,
+                       data = trainData,
+                       method = "knn",
+                       tuneGrid = kgrid,
+                       trControl = trainControl(method = 'cv', n = 5)
+      )
+
+      # train regression classification tree
+      rtree <- train(form,
+                     data = trainData,
+                     method = 'rpart',
+                     tuneLength = input$slider_dtRange[2],
+                     trControl = trainControl(method = 'cv', n = 5)
+      )
+
+      # evaluate test rmse
+      predLm <- predict(lm, newdata = testData)
+      rmse_lm(sqrt(mean((predLm - testData$totalValue)^2)))
+      predknn <- predict(knn_fit, newdata = testData)
+      rmse_knn(sqrt(mean((predknn - testData$totalValue)^2)))
+      predrtree <- predict(rtree, newdata = testData)
+      rmse_dt(sqrt(mean((predrtree - testData$totalValue)^2)))
+      
+      if ((rmse_dt() < rmse_knn()) & (rmse_dt() < rmse_lm())){
+        model_best_text('Regression Decision Tree')
+      } else if (rmse_knn() < rmse_lm()) {
+        model_best_text('K-Nearest Neighbors')
+      } else {
+        model_best_text('Linear Regression')
+      }
+    })
+    
+    # render rmse to frontend on model fitting tab
+    output$rmse_dt <- renderText({
+      rmse_dt()
+    })
+    output$rmse_knn <- renderText({
+      rmse_knn()
+    })
+    output$rmse_lm <- renderText({
+      rmse_lm()
+    })
+    output$model_best_text <- renderText({
+      model_best_text()
+    })
+    
+    # predict a new obs
+    predNewobs = reactiveVal(0)
+    observeEvent(input$action_predict, {
+      # get formula 
+      form <- as.formula(paste('totalValue ~', paste(input$select_modelVars, collapse='+')))
+      
+      # get model
+      lm <- train(form,
+                  data = df,
+                  method = 'lm'
+      )
+      
+      # get new obs
+      newobs <- data.frame(lapply(df[,2:117], mean))
+      newobs$g <- input$numeric_g
+      newobs$a <- input$numeric_a
+      newobs$p <- input$numeric_g + input$numeric_a
+      newobs$gp <- input$numeric_gp
+      newobs$plusMinus <- input$numeric_plusminus
+      newobs$pim <- input$numeric_pim
+      
+      # predict
+      predNewobs(unname(predict(lm, newdata = newobs)))
+    })
+    
+    # render predicton to frontend
+    output$predNewobs <- renderText({
+      predNewobs()
+    })
 
 })

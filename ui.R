@@ -13,6 +13,7 @@ library(DT)
 library(dplyr)
 
 df_data_eda <- read.csv('data/skater_contracts_stats_eda.csv')
+df_data_model <- read.csv('data/skater_contracts_stats.csv')
 colourBy <- c('expiraryStatus', 'type', 'position', 'nationality', 'handness')
 
 dashboardPage(
@@ -55,7 +56,6 @@ dashboardPage(
       ),
       
       # Data Exploration Tab
-      
       tabItem(tabName = "dataExploration",
               h2("Data Exploration"),
               h4('Filters'),
@@ -136,14 +136,102 @@ dashboardPage(
                   DTOutput('summary')
                 )
               )
-              
-              
-              
       ),
       
       # Modeling Tab
       tabItem(tabName = "modeling",
-              h2("Modeling tab content")
+              h2("Modeling tab content"),
+              tabsetPanel(
+                tabPanel(
+                  "Info",
+                  h4('Linear Regression'),
+                  p('Linear regression is one of the commonly used supervised methods for modeling and useful tool for predicting a quantitative response on the basis of a single or multiple predictor variables. 
+                    The idea of linear regression is that the model finds the best fit line between predictor variables and response variable, minimizing sum of squared errors.
+                    Here we will fit a linear regression model to predict the totalValue of a contract.'),
+                  h4('Decision Tree'),
+                  p('Tree-based method splits up response variable into subsets based on their relationship to one or more predictor variables. 
+                    Because it is easy to understand and interpret output and no statistical assumptions is necessary, regression tree (continuous variable) and classification tree (group membership) are commonly used.
+                    Here we will fit a regression tree to predict the totalValue of a contract.'),
+                  h4('K Nearest Neighbors'),
+                  p('KNN is one of the simplist regression methods. The idea is to use a distance metric to find the n nearest observations. We estimate the response variable by
+                    finding the average of these n nearest observations. Here we will fit KNN regression using the 2norm as a distance metric to predict totalValue of a contract.')
+                ),
+                tabPanel(
+                  "Fitting",
+                  h3('Model Training'),
+                  fluidRow(
+                    box(
+                      title = 'All Models Settings', width=12,
+                      sliderInput("slider_trainProp", "Proportion of Data for Training", min = 0.5, max = 0.9, value = 0.7),
+                      selectInput('select_modelVars', label = 'Variables to Include', choices = c('seasonId', 'heigh', 'weight', 'gp', 'g', 'a', 'pim'), selected = colnames(select(df_data_model, -link, -totalValue)), multiple = TRUE)
+                      
+                    )
+                  ),
+                  fluidRow(
+                     box(
+                       title = 'Decision Tree',
+                       sliderInput("slider_dtRange", "Range of Tree-Depth Tuning Parameter", min = 1, max = 15, value = c(1, 15))
+                     ),
+                     box(
+                       title = 'K-Nearest Neighbors',
+                       sliderInput("slider_knnRange", "Range of K Tuning Parameter", min = 1, max = 9, value = c(1, 9), step = 2)
+                     ),
+                     box(
+                       title = 'Linear Regression',
+                       p('No hyperparameters to include')
+                     ),
+                     box(
+                       title = 'Train Models',
+                       actionButton("action_train", "Click here to train Models")
+                     )
+                  ),
+                  fluidRow(
+                    div(style = "height:10px;"),
+                    div(style = "height:15px; border-radius: 1px; background: #D8D8D8;"),
+                    div(style = "height:10px;"),
+                  ),
+                  h3('Model Results'),
+                  fluidRow(
+                    box(
+                      title = 'Decision Tree',
+                      p('RMSE: '),
+                      textOutput('rmse_dt')
+                    ),
+                    box(
+                      title = 'K-Nearest Neighbors',
+                      p('RMSE: '),
+                      textOutput('rmse_knn')
+                    ),
+                    box(
+                      title = 'Linear Regression',
+                      p('RMSE: '),
+                      textOutput('rmse_lm')
+                    ),
+                    box(
+                      title = 'Model Selection',
+                      p('The best performing model is: '),
+                      textOutput('model_best_text')
+                    )
+                  ),
+                ),
+                tabPanel(
+                  "Prediction",
+                  h3('Pediction using Best Scoring Model'),
+                  p('**Note: all other predictors will be the average across the dataset'),
+                  box(
+                    title = 'Predictors', width=12,
+                    numericInput("numeric_gp", "Games Played", value = 82),
+                    numericInput("numeric_g", "Goals", value = 20),
+                    numericInput("numeric_a", "Assists", value = 20),
+                    numericInput("numeric_plusminus", "Plus/Minus", value = 0),
+                    numericInput("numeric_pim", "Penalties in Minutes", value = 34),
+                  ),
+                  actionButton("action_predict", "Predict!"),
+                  box(
+                    textOutput('predNewobs')
+                  )
+                )
+              )
       ),
       
       # Data Tab
@@ -152,19 +240,19 @@ dashboardPage(
               fluidRow(
                 box(
                   title = 'Player Filters',
-                  selectInput('select_position', label = 'Position', choices = append(c('All'), unique(df_data_eda$position)), selected = 'All'),
-                  selectInput('select_handness', label = 'Handness', c('Left', 'Right', 'All'), selected = 'All'),
-                  selectInput('select_nation', label = 'Nation', choices = append(c('All'), unique(df_data_eda$nationality)), selected = 'All'),
-                  sliderInput("slider_height", "Player Height (inches)", min = min(df_data_eda$height), max = max(df_data_eda$height), value = c(min(df_data_eda$height), max = max(df_data_eda$height))),
-                  sliderInput("slider_weight", "Player Weight (lbs)", min = min(df_data_eda$weight), max = max(df_data_eda$weight), value = c(min(df_data_eda$weight), max = max(df_data_eda$weight))),
-                  sliderInput("slider_age", "Player Age at Signing (days)", min = min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays), value = c(min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays)))
+                  selectInput('select_positiond', label = 'Position', choices = append(c('All'), unique(df_data_eda$position)), selected = 'All'),
+                  selectInput('select_handnessd', label = 'Handness', c('Left', 'Right', 'All'), selected = 'All'),
+                  selectInput('select_nationd', label = 'Nation', choices = append(c('All'), unique(df_data_eda$nationality)), selected = 'All'),
+                  sliderInput("slider_heightd", "Player Height (inches)", min = min(df_data_eda$height), max = max(df_data_eda$height), value = c(min(df_data_eda$height), max = max(df_data_eda$height))),
+                  sliderInput("slider_weightd", "Player Weight (lbs)", min = min(df_data_eda$weight), max = max(df_data_eda$weight), value = c(min(df_data_eda$weight), max = max(df_data_eda$weight))),
+                  sliderInput("slider_aged", "Player Age at Signing (days)", min = min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays), value = c(min(df_data_eda$ageAtSigningInDays), max = max(df_data_eda$ageAtSigningInDays)))
                 ),
                 box(
                   title = 'Contract Filters',
-                  selectInput('select_type', label = 'Contract Type', choices = append(c('All'), unique(df_data_eda$type)), selected = 'All'),
-                  sliderInput("slider_totalValue", "Total Value of Contract ($USD)", min = min(df_data_eda$totalValue), max = max(df_data_eda$totalValue), value = c(min(df_data_eda$totalValue), max = max(df_data_eda$totalValue))),
-                  sliderInput("slider_length", "Total Length of Contract (years)", min = min(df_data_eda$length), max = max(df_data_eda$length), value = c(min(df_data_eda$length), max = max(df_data_eda$length))),
-                  dateRangeInput("daterange_signingDate", "Signing Date", start = min(df_data_eda$signingDate), end = max(df_data_eda$signingDate))
+                  selectInput('select_typed', label = 'Contract Type', choices = append(c('All'), unique(df_data_eda$type)), selected = 'All'),
+                  sliderInput("slider_totalValued", "Total Value of Contract ($USD)", min = min(df_data_eda$totalValue), max = max(df_data_eda$totalValue), value = c(min(df_data_eda$totalValue), max = max(df_data_eda$totalValue))),
+                  sliderInput("slider_lengthd", "Total Length of Contract (years)", min = min(df_data_eda$length), max = max(df_data_eda$length), value = c(min(df_data_eda$length), max = max(df_data_eda$length))),
+                  dateRangeInput("daterange_signingDated", "Signing Date", start = min(df_data_eda$signingDate), end = max(df_data_eda$signingDate))
                 )
               ),
               fluidRow(
